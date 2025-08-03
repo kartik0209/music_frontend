@@ -1,0 +1,153 @@
+.login-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 1rem;
+
+  .login-content {
+    width: 100%;
+    max-width: 400px;
+
+    .login-header {
+      text-align: center;
+      margin-bottom: 2rem;
+
+      .logo {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 0.5rem;
+
+        .logo-icon {
+          font-size: 2.5rem;
+          color: white;
+          margin-right: 0.5rem;
+        }
+
+        .logo-text {
+          color: white;
+          margin: 0;
+          font-weight: 700;
+        }
+      }
+
+      .subtitle {
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 1rem;
+      }
+    }
+
+    .login-card {
+      border-radius: 16px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 
+                  0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      border: none;
+      padding: 1rem;
+
+      .login-error {
+        margin-bottom: 1.5rem;
+        border-radius: 8px;
+      }
+
+      .ant-form-item-label > label {
+        font-weight: 600;
+        color: #374151;
+      }
+
+      .ant-input-affix-wrapper,
+      .ant-input {
+        border-radius: 8px;
+        border: 1px solid #d1d5db;
+
+        &:hover {
+          border-color: #6366f1;
+        }
+
+        &:focus,
+        &.ant-input-affix-wrapper-focused {
+          border-color: #6366f1;
+          box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+        }
+      }
+
+      .ant-btn-primary {
+        background-color: #6366f1;
+        border-color: #6366f1;
+        border-radius: 8px;
+        font-weight: 600;
+        height: 48px;
+
+        &:hover {
+          background-color: #5856eb;
+          border-color: #5856eb;
+        }
+      }
+
+      .demo-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+
+        .demo-btn {
+          border-radius: 8px;
+          font-weight: 600;
+          height: 44px;
+
+          &.user-demo {
+            background-color: #10b981;
+            border-color: #10b981;
+            color: white;
+
+            &:hover {
+              background-color: #059669;
+              border-color: #059669;
+            }
+          }
+
+          &.admin-demo {
+            background-color: #f59e0b;
+            border-color: #f59e0b;
+            color: white;
+
+            &:hover {
+              background-color: #d97706;
+              border-color: #d97706;
+            }
+          }
+        }
+      }
+
+      .login-footer {
+        text-align: center;
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid #f3f4f6;
+
+        a {
+          color: #6366f1;
+          font-weight: 600;
+          text-decoration: none;
+
+          &:hover {
+            color: #5856eb;
+            text-decoration: underline;
+          }
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .login-container {
+    padding: 0.5rem;
+
+    .login-content {
+      .login-card {
+        padding: 0.5rem;
+      }
+    }
+  }
+}
