@@ -21,18 +21,29 @@ const ProtectedRoute = ({ children, requiredRole = null }) => {
     return <Navigate to="/login" replace />;
   }
 
-  // Check role-based access
-  if (requiredRole && user?.role !== requiredRole) {
-    return (
-      <div className="protected-route-unauthorized">
-        <Alert
-          message="Access Denied"
-          description={`You need ${requiredRole} privileges to access this page. Your current role: ${user?.role || 'unknown'}`}
-          type="error"
-          showIcon
-        />
-      </div>
-    );
+  // Role-based access control
+  if (requiredRole) {
+    // If user role doesn't match required role
+    if (user?.role !== requiredRole) {
+      // Redirect admin to admin panel and user to dashboard
+      if (user?.role === 'admin' && requiredRole === 'user') {
+        return <Navigate to="/admin" replace />;
+      } else if (user?.role === 'user' && requiredRole === 'admin') {
+        return <Navigate to="/dashboard" replace />;
+      }
+      
+      // Fallback unauthorized message
+      return (
+        <div className="protected-route-unauthorized">
+          <Alert
+            message="Access Denied"
+            description={`You need ${requiredRole} privileges to access this page. Your current role: ${user?.role || 'unknown'}`}
+            type="error"
+            showIcon
+          />
+        </div>
+      );
+    }
   }
 
   return children;

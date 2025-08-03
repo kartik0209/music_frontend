@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Form, Input, Button, Card, Typography, Select, Alert } from 'antd';
+import { Form, Input, Button, Card, Typography, Alert } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
 import './Resgister.scss';
 
 const { Title, Text } = Typography;
-const { Option } = Select;
 
 const Register = () => {
   const [form] = Form.useForm();
@@ -38,7 +37,7 @@ const Register = () => {
       username: values.username,
       email: values.email,
       password: values.password,
-      role: values.role
+      role: 'user' // Default role is user
     });
     
     if (success) {
@@ -52,7 +51,6 @@ const Register = () => {
       <div className="register-content">
         <div className="register-header">
           <div className="logo">
-            {/* <MusicOutlined className="logo-icon" /> */}
             <Title level={2} className="logo-text">MusicApp</Title>
           </div>
           <Text className="subtitle">Create your account</Text>
@@ -76,7 +74,6 @@ const Register = () => {
             onFinish={handleSubmit}
             layout="vertical"
             requiredMark={false}
-            initialValues={{ role: 'user' }}
           >
             <Form.Item
               name="username"
@@ -118,22 +115,6 @@ const Register = () => {
                 placeholder="Enter email"
                 size="large"
               />
-            </Form.Item>
-
-            <Form.Item
-              name="role"
-              label="Account Type"
-              rules={[
-                {
-                  required: true,
-                  message: 'Please select an account type!',
-                },
-              ]}
-            >
-              <Select size="large" placeholder="Select account type">
-                <Option value="user">User (Listen to music)</Option>
-                <Option value="admin">Admin (Manage music)</Option>
-              </Select>
             </Form.Item>
 
             <Form.Item
