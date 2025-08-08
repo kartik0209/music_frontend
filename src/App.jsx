@@ -8,19 +8,16 @@ import Dashboard from './pages/Dashboard';
 import AdminPanel from './pages/AdminPanel';
 import ProtectedRoute from './components/ProtectedRoute';
 
-// User Pages
 import MusicBrowser from './pages/user/MusicBrowser';
 import Playlists from './pages/user/Playlists';
 import Favorites from './pages/user/Favorites';
 import RecentPlays from './pages/user/RecentPlays';
+import Profile from './pages/user/Profile';
 
-// Admin Pages
 import AdminSongs from './pages/admin/AdminSongs';
 import AddSong from './pages/admin/AddSongs';
 import EditSong from './pages/admin/EditSong';
 import AdminUsers from './pages/admin/AdminUsers';
-// import AdminAnalytics from './pages/admin/AdminAnalytics';
-// import AdminSettings from './pages/admin/AdminSettings';
 
 import './App.scss';
 
@@ -38,15 +35,12 @@ function App() {
         <Router>
           <div className="App">
             <Routes>
-              {/* Public Routes */}
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               
-              {/* Protected Routes */}
               <Route path="/" element={<Layout />}>
                 <Route index element={<Navigate to="/dashboard" replace />} />
                 
-                {/* User Dashboard */}
                 <Route 
                   path="/dashboard" 
                   element={
@@ -56,7 +50,6 @@ function App() {
                   } 
                 />
                 
-                {/* User Pages */}
                 <Route 
                   path="/music" 
                   element={
@@ -89,8 +82,15 @@ function App() {
                     </ProtectedRoute>
                   } 
                 />
+                <Route 
+                  path="/profile" 
+                  element={
+                    <ProtectedRoute requiredRole="user">
+                      <Profile />
+                    </ProtectedRoute>
+                  } 
+                />
                 
-                {/* Admin Panel */}
                 <Route 
                   path="/admin" 
                   element={
@@ -100,7 +100,6 @@ function App() {
                   } 
                 />
                 
-                {/* Admin Pages */}
                 <Route 
                   path="/admin/songs" 
                   element={
@@ -133,25 +132,8 @@ function App() {
                     </ProtectedRoute>
                   } 
                 />
-                {/* <Route 
-                  path="/admin/analytics" 
-                  element={
-                    <ProtectedRoute requiredRole="admin">
-                      <AdminAnalytics />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/admin/settings" 
-                  element={
-                    <ProtectedRoute requiredRole="admin">
-                      <AdminSettings />
-                    </ProtectedRoute>
-                  } 
-                /> */}
               </Route>
               
-              {/* Fallback */}
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
           </div>

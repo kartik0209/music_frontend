@@ -8,7 +8,7 @@ import {
     DashboardOutlined,
     MenuFoldOutlined,
     MenuUnfoldOutlined,
-    // MusicOutlined, // Removed as requested
+    SoundOutlined,
     PlusOutlined,
     UnorderedListOutlined,
     HeartOutlined,
@@ -17,6 +17,8 @@ import {
     BarChartOutlined
 } from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
+import { MusicPlayerProvider } from '../contexts/MusicContext';
+import MusicPlayer from './MusicPlayer';
 import './Layout.scss';
 
 const { Header, Sider, Content } = AntLayout;
@@ -38,11 +40,13 @@ const Layout = () => {
             key: 'profile',
             label: 'Profile',
             icon: <UserOutlined />,
+            onClick: () => navigate('/profile'),
         },
         {
             key: 'settings',
             label: 'Settings',
             icon: <SettingOutlined />,
+            onClick: () => navigate('/settings'),
         },
         {
             type: 'divider',
@@ -55,7 +59,6 @@ const Layout = () => {
         },
     ];
 
-    // User menu items
     const userMenuItems2 = [
         {
             key: '/dashboard',
@@ -65,7 +68,7 @@ const Layout = () => {
         },
         {
             key: '/music',
-            // icon: <MusicOutlined />, // Removed as requested
+            icon: <SoundOutlined />,
             label: 'Browse Music',
             onClick: () => navigate('/music'),
         },
@@ -89,7 +92,6 @@ const Layout = () => {
         }
     ];
 
-    // Admin menu items
     const adminMenuItems = [
         {
             key: '/admin',
@@ -99,7 +101,7 @@ const Layout = () => {
         },
         {
             key: '/admin/songs',
-            // icon: <MusicOutlined />, // Removed as requested
+            icon: <SoundOutlined />,
             label: 'Manage Songs',
             onClick: () => navigate('/admin/songs'),
         },
@@ -129,7 +131,6 @@ const Layout = () => {
         }
     ];
 
-    // Get menu items based on user role
     const getMenuItems = () => {
         if (user?.role === 'admin') {
             return adminMenuItems;
@@ -138,69 +139,73 @@ const Layout = () => {
     };
 
     return (
-        <AntLayout className="layout-container">
-            <Sider
-                trigger={null}
-                collapsible
-                collapsed={collapsed}
-                className="layout-sider"
-                theme="light"
-            >
-                <div className="logo">
-                    {!collapsed && (
-                        <Title level={4} className="logo-text">
-                            {user?.role === 'admin' ? 'Admin Panel' : 'MusicApp'}
-                        </Title>
-                    )}
-                </div>
-
-                <Menu
-                    mode="inline"
-                    selectedKeys={[location.pathname]}
-                    items={getMenuItems()}
-                    className="layout-menu"
-                />
-            </Sider>
-
-            <AntLayout>
-                <Header className="layout-header">
-                    <div className="header-left">
-                        <Button
-                            type="text"
-                            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-                            onClick={() => setCollapsed(!collapsed)}
-                            className="collapse-btn"
-                        />
+        <MusicPlayerProvider>
+            <AntLayout className="layout-container">
+                <Sider
+                    trigger={null}
+                    collapsible
+                    collapsed={collapsed}
+                    className="layout-sider"
+                    theme="light"
+                >
+                    <div className="logo">
+                        {!collapsed && (
+                            <Title level={4} className="logo-text">
+                                {user?.role === 'admin' ? 'Admin Panel' : 'MusicApp'}
+                            </Title>
+                        )}
                     </div>
 
-                    <div className="header-right">
-                        <Dropdown
-                            menu={{ items: userMenuItems }}
-                            placement="bottomRight"
-                            trigger={['click']}
-                        >
-                            <div className="user-dropdown">
-                                <Avatar
-                                    src={user?.profile?.avatar}
-                                    icon={<UserOutlined />}
-                                    className="user-avatar"
-                                />
-                                <div className="user-info">
-                                    <span className="username">{user?.username}</span>
-                                    <span className="user-role">{user?.role}</span>
+                    <Menu
+                        mode="inline"
+                        selectedKeys={[location.pathname]}
+                        items={getMenuItems()}
+                        className="layout-menu"
+                    />
+                </Sider>
+
+                <AntLayout>
+                    <Header className="layout-header">
+                        <div className="header-left">
+                            <Button
+                                type="text"
+                                icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                                onClick={() => setCollapsed(!collapsed)}
+                                className="collapse-btn"
+                            />
+                        </div>
+
+                        <div className="header-right">
+                            <Dropdown
+                                menu={{ items: userMenuItems }}
+                                placement="bottomRight"
+                                trigger={['click']}
+                            >
+                                <div className="user-dropdown">
+                                    <Avatar
+                                        src={user?.profile?.avatar}
+                                        icon={<UserOutlined />}
+                                        className="user-avatar"
+                                    />
+                                    <div className="user-info">
+                                        <span className="username">{user?.username}</span>
+                                        <span className="user-role">{user?.role}</span>
+                                    </div>
                                 </div>
-                            </div>
-                        </Dropdown>
-                    </div>
-                </Header>
+                            </Dropdown>
+                        </div>
+                    </Header>
 
-                <Content className="layout-content">
-                    <div className="content-wrapper">
-                        <Outlet />
-                    </div>
-                </Content>
+                    <Content className="layout-content">
+                        <div className="content-wrapper">
+                            <Outlet />
+                        </div>
+                    </Content>
+                </AntLayout>
+                
+                <MusicPlayer />
             </AntLayout>
-        </AntLayout>
+        </MusicPlayerProvider>
     );
 };
 

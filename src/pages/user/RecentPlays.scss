@@ -1,0 +1,231 @@
+.recent-plays-container {
+  .recent-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+
+    .header-info {
+      h2 {
+        margin-bottom: 0.5rem;
+        color: #1f2937;
+      }
+
+      .recent-subtitle {
+        color: #6b7280;
+        font-size: 1rem;
+      }
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    @media (max-width: 768px) {
+      flex-direction: column;
+      align-items: stretch;
+
+      .header-actions {
+        justify-content: flex-start;
+      }
+    }
+  }
+
+  .recent-plays-card {
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    border: none;
+
+    .date-group {
+      &:not(:last-child) {
+        margin-bottom: 2rem;
+      }
+
+      .date-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 0 0.5rem 0;
+        border-bottom: 2px solid #f3f4f6;
+        margin-bottom: 1rem;
+
+        .date-title {
+          font-size: 1.125rem;
+          font-weight: 600;
+          color: #1f2937;
+        }
+
+        .play-count {
+          font-size: 0.875rem;
+          background: #f3f4f6;
+          padding: 0.25rem 0.75rem;
+          border-radius: 12px;
+        }
+      }
+
+      .ant-list {
+        .recent-play-item {
+          padding: 1rem 0;
+          border-bottom: 1px solid #f9fafb;
+          transition: background-color 0.2s;
+
+          &:hover {
+            background-color: #f9fafb;
+
+            .song-avatar .play-overlay {
+              opacity: 1;
+            }
+          }
+
+          &:last-child {
+            border-bottom: none;
+          }
+
+          .song-avatar {
+            position: relative;
+            cursor: pointer;
+
+            .ant-avatar {
+              border-radius: 8px;
+            }
+
+            .play-overlay {
+              position: absolute;
+              top: 0;
+              left: 0;
+              right: 0;
+              bottom: 0;
+              background: rgba(0, 0, 0, 0.6);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              border-radius: 8px;
+              opacity: 0;
+              transition: opacity 0.2s;
+              color: white;
+              font-size: 20px;
+            }
+          }
+
+          .ant-list-item-meta {
+            align-items: flex-start;
+
+            .ant-list-item-meta-content {
+              .song-info {
+                .song-title {
+                  font-size: 1rem;
+                  color: #1f2937;
+                  margin-bottom: 0.25rem;
+                  display: block;
+                }
+
+                .song-meta {
+                  display: flex;
+                  align-items: center;
+                  gap: 0.5rem;
+                  flex-wrap: wrap;
+                  margin-bottom: 0.5rem;
+
+                  .artist {
+                    color: #6366f1;
+                    font-weight: 500;
+                  }
+
+                  @media (max-width: 576px) {
+                    flex-direction: column;
+                    align-items: flex-start;
+                    gap: 0.25rem;
+                  }
+                }
+              }
+
+              .play-details {
+                .song-tags {
+                  display: flex;
+                  gap: 0.25rem;
+                  flex-wrap: wrap;
+                  margin-bottom: 0.75rem;
+                }
+
+                .play-info {
+                  display: flex;
+                  align-items: center;
+                  gap: 0.5rem;
+                  flex-wrap: wrap;
+
+                  .completion-tag {
+                    font-size: 0.75rem;
+                    font-weight: 500;
+                  }
+
+                  .play-time {
+                    font-size: 0.875rem;
+                  }
+
+                  @media (max-width: 576px) {
+                    flex-direction: column;
+                    align-items: flex-start;
+                    gap: 0.25rem;
+                  }
+                }
+              }
+            }
+          }
+
+          .ant-list-item-action {
+            margin-left: 1rem;
+
+            @media (max-width: 768px) {
+              margin-left: 0;
+              margin-top: 0.5rem;
+            }
+
+            .ant-btn {
+              border: none;
+              font-weight: 500;
+              
+              &:hover {
+                color: #6366f1;
+                background-color: rgba(99, 102, 241, 0.1);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .recent-plays-container {
+    .recent-plays-card {
+      .date-group {
+        .date-header {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 0.5rem;
+        }
+
+        .ant-list {
+          .recent-play-item {
+            .ant-list-item-meta {
+              .ant-list-item-meta-avatar {
+                margin-right: 12px;
+              }
+            }
+
+            .ant-list-item-action {
+              ul {
+                flex-direction: column;
+                gap: 0.5rem;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

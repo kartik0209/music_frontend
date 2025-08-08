@@ -1,205 +1,488 @@
-import { Card, Typography, Row, Col, Statistic, Alert, Button } from 'antd';
+import { useState, useEffect } from 'react';
+import { Card, Typography, Row, Col, Button, List, Avatar, Tag, Empty, Statistic } from 'antd';
 import { 
   PlayCircleOutlined, 
   HeartOutlined, 
-  UserOutlined,
-  StarOutlined,
-  ClockCircleOutlined
+  UnorderedListOutlined, 
+  ClockCircleOutlined,
+  TrophyOutlined,
+  FireOutlined,
+  SoundOutlined,
+  PlusOutlined
 } from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
+import { useMusicPlayer } from '../contexts/MusicContext';
+import api from '../utils/api';
 import './Dashboard.scss';
 
 const { Title, Text } = Typography;
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const { playSong } = useMusicPlayer();
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({});
+  const [recentPlays, setRecentPlays] = useState([]);
+  const [favorites, setFavorites] = useState([]);
+  const [playlists, setPlaylists] = useState([]);
+  const [topSongs, setTopSongs] = useState([]);
+  const [featuredPlaylists, setFeaturedPlaylists] = useState([]);
 
-  const userStats = [
-    {
-      title: 'Songs Played',
-      value: user?.activity?.songsPlayed || 0,
-      icon: <PlayCircleOutlined className="stat-icon play" />,
-      color: '#6366f1'
-    },
-    {
-      title: 'Play Time',
-      value: Math.floor((user?.activity?.totalPlayTime || 0) / 60),
-      suffix: 'min',
-      icon: <ClockCircleOutlined className="stat-icon time" />,
-      color: '#10b981'
-    },
-    {
-      title: 'Ratings Given',
-      value: user?.activity?.ratingsGiven || 0,
-      icon: <StarOutlined className="stat-icon rating" />,
-      color: '#f59e0b'
-    },
-    {
-      title: 'Playlists',
-      value: user?.activity?.playlistsCreated || 0,
-    //   icon: <MusicOutlined className="stat-icon playlist" />,
-      color: '#ef4444'
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      
+      const [
+        statsRes,
+        recentRes,
+        favoritesRes,
+        playlistsRes,
+        topSongsRes,
+        featuredRes
+      ] = await Promise.all([
+        api.get('/user/stats'),
+        api.get('/user/history?limit=5'),
+        api.get('/user/favorites?limit=5'),
+        api.get('/playlists/user/me?limit=5'),
+        api.get('/songs?sortBy=playCount&limit=5'),
+        api.get('/playlists/featured?limit=5')
+      ]);
+
+      setStats(statsRes.data.data);
+      setRecentPlays(recentRes.data.data.history || []);
+      setFavorites(favoritesRes.data.data.favorites || []);
+      setPlaylists(playlistsRes.data.data.playlists || []);
+      setTopSongs(topSongsRes.data.data.songs || []);
+      setFeaturedPlaylists(featuredRes.data.data.playlists || []);
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+  };
+
+  const handlePlaySong = async (song) => {
+    try {
+      await playSong(song);
+    } catch (error) {
+      console.error('Error playing song:', error);
+    }
+  };
+
+  const formatDuration = (seconds) => {
+    if (!seconds) return '0:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   return (
     <div className="dashboard-container fade-in">
       <div className="dashboard-header">
-        <Title level={2}>
-          Welcome back, {user?.username}! 👋
-        </Title>
-        <Text className="dashboard-subtitle">
-          Here's your music activity overview
-        </Text>
+        <div className="welcome-section">
+          <Title level={2} className="welcome-title">
+            {getGreeting()}, {user?.profile?.firstName || user?.username}! 👋
+          </Title>
+          <Text className="welcome-subtitle">
+            Ready to discover some amazing music today?
+          </Text>
+        </div>
       </div>
 
-      {/* Role Verification Alert */}
-      <Alert
-        message={`Role Access Test: ${user?.role?.toUpperCase()}`}
-        description={`You are successfully logged in as a ${user?.role}. This dashboard is specifically for users to view their music listening statistics and activity.`}
-        type="info"
-        showIcon
-        icon={<UserOutlined />}
-        className="role-alert"
-      />
+      <Row gutter={[24, 24]}>
+        <Col xs={24} sm={12} md={6}>
+          <Card className="stat-card listening-time">
+            <Statistic
+              title="Listening Time"
+              value={Math.floor((stats.totalListeningTime || 0) / 3600)}
+              suffix="hrs"
+              prefix={<ClockCircleOutlined />}
+              loading={loading}
+            />
+          </Card>
+        </Col>
+      </Row>
 
-      {/* User Statistics */}
-      <Row gutter={[16, 16]} className="stats-row">
-        {userStats.map((stat, index) => (
-          <Col xs={12} sm={12} lg={6} key={index}>
-            <Card className="stat-card">
-              <Statistic
-                title={stat.title}
-                value={stat.value}
-                suffix={stat.suffix}
-                prefix={stat.icon}
-                valueStyle={{ color: stat.color }}
+      <Row gutter={[24, 24]}>
+        <Col xs={24} lg={12}>
+          <Card 
+            title="🎵 Recent Plays" 
+            className="dashboard-card"
+            extra={
+              <Button type="link" href="/recent">
+                View All
+              </Button>
+            }
+          >
+            {recentPlays.length > 0 ? (
+              <List
+                dataSource={recentPlays}
+                loading={loading}
+                renderItem={(play) => (
+                  <List.Item
+                    className="recent-play-item"
+                    actions={[
+                      <Button
+                        type="text"
+                        icon={<PlayCircleOutlined />}
+                        onClick={() => handlePlaySong(play.song)}
+                      >
+                        Play
+                      </Button>
+                    ]}
+                  >
+                    <List.Item.Meta
+                      avatar={
+                        <Avatar
+                          src={play.song.coverUrl}
+                          shape="square"
+                          size={50}
+                          icon={<SoundOutlined />}
+                        />
+                      }
+                      title={play.song.title}
+                      description={
+                        <div>
+                          <Text type="secondary">{play.song.artist}</Text>
+                          <br />
+                          <Text type="secondary" className="play-time">
+                            {new Date(play.playedAt).toLocaleDateString()}
+                          </Text>
+                        </div>
+                      }
+                    />
+                  </List.Item>
+                )}
               />
-            </Card>
-          </Col>
-        ))}
-      </Row>
-
-      {/* User Features */}
-      <Row gutter={[16, 16]} className="features-row">
-        <Col xs={24} md={12}>
-          <Card 
-            title="🎵 Music Player" 
-            className="feature-card"
-            actions={[
-              <Button type="primary" disabled>Coming Soon</Button>
-            ]}
-          >
-            <div className="feature-content">
-              <PlayCircleOutlined className="feature-icon" />
-              <div>
-                <Text strong>Stream Your Favorite Music</Text>
-                <br />
-                <Text type="secondary">
-                  Play songs, create playlists, and discover new music
-                </Text>
-              </div>
-            </div>
+            ) : (
+              <Empty 
+                description="No recent plays" 
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+              />
+            )}
           </Card>
         </Col>
 
-        <Col xs={24} md={12}>
+        <Col xs={24} lg={12}>
           <Card 
-            title="❤️ My Favorites" 
-            className="feature-card"
-            actions={[
-              <Button type="primary" disabled>Coming Soon</Button>
-            ]}
+            title="❤️ Recent Favorites" 
+            className="dashboard-card"
+            extra={
+              <Button type="link" href="/favorites">
+                View All
+              </Button>
+            }
           >
-            <div className="feature-content">
-              <HeartOutlined className="feature-icon" />
-              <div>
-                <Text strong>Your Liked Songs</Text>
-                <br />
-                <Text type="secondary">
-                  Access all your favorite tracks in one place
-                </Text>
-              </div>
-            </div>
-          </Card>
-        </Col>
-
-        <Col xs={24} md={12}>
-          <Card 
-            title="⭐ Recommendations" 
-            className="feature-card"
-            actions={[
-              <Button type="primary" disabled>Coming Soon</Button>
-            ]}
-          >
-            <div className="feature-content">
-              <StarOutlined className="feature-icon" />
-              <div>
-                <Text strong>Discover New Music</Text>
-                <br />
-                <Text type="secondary">
-                  Personalized song recommendations based on your taste
-                </Text>
-              </div>
-            </div>
-          </Card>
-        </Col>
-
-        <Col xs={24} md={12}>
-          <Card 
-            title="🎧 Recent Activity" 
-            className="feature-card"
-            actions={[
-              <Button type="primary" disabled>Coming Soon</Button>
-            ]}
-          >
-            <div className="feature-content">
-              <ClockCircleOutlined className="feature-icon" />
-              <div>
-                <Text strong>Listening History</Text>
-                <br />
-                <Text type="secondary">
-                  View your recently played songs and activity
-                </Text>
-              </div>
-            </div>
+            {favorites.length > 0 ? (
+              <List
+                dataSource={favorites}
+                loading={loading}
+                renderItem={(favorite) => (
+                  <List.Item
+                    className="favorite-item"
+                    actions={[
+                      <Button
+                        type="text"
+                        icon={<PlayCircleOutlined />}
+                        onClick={() => handlePlaySong(favorite.song)}
+                      >
+                        Play
+                      </Button>
+                    ]}
+                  >
+                    <List.Item.Meta
+                      avatar={
+                        <Avatar
+                          src={favorite.song.coverUrl}
+                          shape="square"
+                          size={50}
+                          icon={<SoundOutlined />}
+                        />
+                      }
+                      title={favorite.song.title}
+                      description={
+                        <div>
+                          <Text type="secondary">{favorite.song.artist}</Text>
+                          <br />
+                          <Text type="secondary" className="added-time">
+                            Added {new Date(favorite.addedAt).toLocaleDateString()}
+                          </Text>
+                        </div>
+                      }
+                    />
+                  </List.Item>
+                )}
+              />
+            ) : (
+              <Empty 
+                description="No favorites yet" 
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+              />
+            )}
           </Card>
         </Col>
       </Row>
 
-      {/* Profile Information */}
-      <Card title="👤 Profile Information" className="profile-card">
-        <Row gutter={[16, 16]}>
-          <Col xs={24} sm={12}>
-            <div className="profile-item">
-              <Text strong>Username:</Text>
-              <Text className="profile-value">{user?.username}</Text>
+      <Row gutter={[24, 24]}>
+        <Col xs={24} lg={12}>
+          <Card 
+            title="🎧 My Playlists" 
+            className="dashboard-card"
+            extra={
+              <Button type="link" href="/playlists">
+                View All
+              </Button>
+            }
+          >
+            {playlists.length > 0 ? (
+              <List
+                dataSource={playlists}
+                loading={loading}
+                renderItem={(playlist) => (
+                  <List.Item
+                    className="playlist-item"
+                    actions={[
+                      <Button
+                        type="text"
+                        icon={<PlayCircleOutlined />}
+                      >
+                        Play
+                      </Button>
+                    ]}
+                  >
+                    <List.Item.Meta
+                      avatar={
+                        <Avatar
+                          src={playlist.coverImage?.path}
+                          shape="square"
+                          size={50}
+                          icon={<UnorderedListOutlined />}
+                        />
+                      }
+                      title={playlist.name}
+                      description={
+                        <div>
+                          <Text type="secondary">
+                            {playlist.songCount || 0} songs
+                          </Text>
+                          <br />
+                          <Tag size="small" color={playlist.privacy === 'public' ? 'green' : 'orange'}>
+                            {playlist.privacy}
+                          </Tag>
+                        </div>
+                      }
+                    />
+                  </List.Item>
+                )}
+              />
+            ) : (
+              <Empty 
+                description="No playlists yet" 
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                style={{ padding: '2rem 0' }}
+              >
+                <Button type="primary" icon={<PlusOutlined />} href="/playlists">
+                  Create Playlist
+                </Button>
+              </Empty>
+            )}
+          </Card>
+        </Col>
+
+        <Col xs={24} lg={12}>
+          <Card 
+            title="🔥 Trending Songs" 
+            className="dashboard-card"
+            extra={
+              <Button type="link" href="/music">
+                Explore More
+              </Button>
+            }
+          >
+            {topSongs.length > 0 ? (
+              <List
+                dataSource={topSongs}
+                loading={loading}
+                renderItem={(song, index) => (
+                  <List.Item
+                    className="trending-song-item"
+                    actions={[
+                      <Button
+                        type="text"
+                        icon={<PlayCircleOutlined />}
+                        onClick={() => handlePlaySong(song)}
+                      >
+                        Play
+                      </Button>
+                    ]}
+                  >
+                    <List.Item.Meta
+                      avatar={
+                        <div className="trending-rank">
+                          <span className="rank-number">#{index + 1}</span>
+                          <Avatar
+                            src={song.coverUrl}
+                            shape="square"
+                            size={50}
+                            icon={<SoundOutlined />}
+                          />
+                        </div>
+                      }
+                      title={song.title}
+                      description={
+                        <div>
+                          <Text type="secondary">{song.artist}</Text>
+                          <br />
+                          <div className="song-stats">
+                            <Text type="secondary">
+                              {song.playCount || 0} plays
+                            </Text>
+                            {song.ratings?.average > 0 && (
+                              <Text type="secondary">
+                                • ⭐ {song.ratings.average.toFixed(1)}
+                              </Text>
+                            )}
+                          </div>
+                        </div>
+                      }
+                    />
+                  </List.Item>
+                )}
+              />
+            ) : (
+              <Empty 
+                description="No trending songs" 
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+              />
+            )}
+          </Card>
+        </Col>
+      </Row>
+
+      <Row gutter={[24, 24]}>
+        <Col span={24}>
+          <Card 
+            title="✨ Featured Playlists" 
+            className="dashboard-card"
+            extra={
+              <Button type="link" href="/music">
+                Discover More
+              </Button>
+            }
+          >
+            {featuredPlaylists.length > 0 ? (
+              <Row gutter={[16, 16]}>
+                {featuredPlaylists.map((playlist) => (
+                  <Col xs={24} sm={12} md={8} lg={6} key={playlist._id}>
+                    <Card
+                      className="featured-playlist-card"
+                      cover={
+                        <div className="playlist-cover">
+                          <img
+                            alt={playlist.name}
+                            src={playlist.coverImage?.path || '/default-playlist.jpg'}
+                            onError={(e) => {
+                              e.target.src = '/default-playlist.jpg';
+                            }}
+                          />
+                          <div className="play-overlay">
+                            <Button
+                              type="primary"
+                              shape="circle"
+                              icon={<PlayCircleOutlined />}
+                              size="large"
+                              className="play-btn"
+                            />
+                          </div>
+                        </div>
+                      }
+                    >
+                      <Card.Meta
+                        title={
+                          <Text ellipsis={{ tooltip: playlist.name }}>
+                            {playlist.name}
+                          </Text>
+                        }
+                        description={
+                          <div>
+                            <Text type="secondary">
+                              {playlist.songCount || 0} songs
+                            </Text>
+                            <br />
+                            <Text type="secondary">
+                              by {playlist.owner?.username}
+                            </Text>
+                          </div>
+                        }
+                      />
+                    </Card>
+                  </Col>
+                ))}
+              </Row>
+            ) : (
+              <Empty 
+                description="No featured playlists" 
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+              />
+            )}
+          </Card>
+        </Col>
+      </Row>
+
+      <Row gutter={[24, 24]}>
+        <Col span={24}>
+          <Card className="quick-actions-card">
+            <div className="quick-actions">
+              <Title level={4}>Quick Actions</Title>
+              <div className="action-buttons">
+                <Button 
+                  type="primary" 
+                  icon={<SoundOutlined />} 
+                  size="large"
+                  href="/music"
+                >
+                  Browse Music
+                </Button>
+                <Button 
+                  icon={<PlusOutlined />} 
+                  size="large"
+                  href="/playlists"
+                >
+                  Create Playlist
+                </Button>
+                <Button 
+                  icon={<HeartOutlined />} 
+                  size="large"
+                  href="/favorites"
+                >
+                  My Favorites
+                </Button>
+                <Button 
+                  icon={<ClockCircleOutlined />} 
+                  size="large"
+                  href="/recent"
+                >
+                  Recent Plays
+                </Button>
+              </div>
             </div>
-          </Col>
-          <Col xs={24} sm={12}>
-            <div className="profile-item">
-              <Text strong>Email:</Text>
-              <Text className="profile-value">{user?.email}</Text>
-            </div>
-          </Col>
-          <Col xs={24} sm={12}>
-            <div className="profile-item">
-              <Text strong>Account Type:</Text>
-              <Text className="profile-value role-badge user">{user?.role}</Text>
-            </div>
-          </Col>
-          <Col xs={24} sm={12}>
-            <div className="profile-item">
-              <Text strong>Member Since:</Text>
-              <Text className="profile-value">
-                {user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
-              </Text>
-            </div>
-          </Col>
-        </Row>
-      </Card>
+          </Card>
+        </Col>
+      </Row>
     </div>
   );
 };
 
 export default Dashboard;
+         
