@@ -104,7 +104,7 @@ const MusicPlayer = () => {
     <>
       <Card 
         className={`music-player ${isMinimized ? 'minimized' : ''}`}
-        bodyStyle={{ padding: isMinimized ? '8px 16px' : '16px' }}
+        styles={{ body: { padding: isMinimized ? '8px 16px' : '16px' } }}
       >
         {!isMinimized ? (
           <div className="player-full">

@@ -125,48 +125,95 @@ export const MusicPlayerProvider = ({ children }) => {
 
     const handleLoadStart = () => dispatch({ type: 'SET_LOADING', payload: true });
     const handleCanPlay = () => dispatch({ type: 'SET_LOADING', payload: false });
+    
+    const handleError = (e) => {
+      console.error('Audio error:', e);
+      dispatch({ type: 'SET_LOADING', payload: false });
+      dispatch({ type: 'PAUSE' });
+    };
+
+    const handleLoadedData = () => {
+      dispatch({ type: 'SET_LOADING', payload: false });
+    };
 
     audio.addEventListener('timeupdate', updateTime);
     audio.addEventListener('ended', handleEnded);
     audio.addEventListener('loadstart', handleLoadStart);
     audio.addEventListener('canplay', handleCanPlay);
+    audio.addEventListener('loadeddata', handleLoadedData);
+    audio.addEventListener('error', handleError);
 
     return () => {
       audio.removeEventListener('timeupdate', updateTime);
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('loadstart', handleLoadStart);
       audio.removeEventListener('canplay', handleCanPlay);
+      audio.removeEventListener('loadeddata', handleLoadedData);
+      audio.removeEventListener('error', handleError);
     };
   }, [state.repeat, state.currentIndex, state.playlist.length]);
 
+  // Handle audio source changes
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !state.currentSong) return;
 
-    audio.src = `/api/stream/audio/${state.currentSong._id}`;
-    
-    if (state.isPlaying) {
-      audio.play().catch(error => {
-        console.error('Error playing audio:', error);
-        message.error('Failed to play audio');
-      });
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.error('No authentication token found');
+      return;
     }
+
+    // Create the audio URL with token
+    const audioUrl = `http://localhost:5000/api/stream/audio/${state.currentSong._id}?token=${token}`;
+    
+    // Reset audio state
+    dispatch({ type: 'SET_LOADING', payload: true });
+    
+    // Set crossorigin to handle CORS properly
+    audio.crossOrigin = 'use-credentials';
+    audio.preload = 'metadata';
+    
+    // Set the source
+    audio.src = audioUrl;
+    
+    console.log('Loading audio from:', audioUrl);
   }, [state.currentSong]);
 
+  // Handle play/pause state changes
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
     if (state.isPlaying) {
-      audio.play().catch(error => {
-        console.error('Error playing audio:', error);
-        dispatch({ type: 'PAUSE' });
-      });
+      if (audio.readyState >= 3) { // HAVE_FUTURE_DATA
+        audio.play().catch(error => {
+          console.error('Error playing audio:', error);
+          if (error.name !== 'AbortError') {
+            dispatch({ type: 'PAUSE' });
+            message.error('Failed to play audio. Please check your connection.');
+          }
+        });
+      } else {
+        // Wait for audio to be ready
+        const handleCanPlay = () => {
+          audio.play().catch(error => {
+            console.error('Error playing audio:', error);
+            if (error.name !== 'AbortError') {
+              dispatch({ type: 'PAUSE' });
+              message.error('Failed to play audio. Please check your connection.');
+            }
+          });
+          audio.removeEventListener('canplay', handleCanPlay);
+        };
+        audio.addEventListener('canplay', handleCanPlay);
+      }
     } else {
       audio.pause();
     }
   }, [state.isPlaying]);
 
+  // Handle volume changes
   useEffect(() => {
     const audio = audioRef.current;
     if (audio) {
@@ -178,10 +225,6 @@ export const MusicPlayerProvider = ({ children }) => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
       
-      const response = await api.get(`/stream/metadata/${song._id}`);
-      console.log(response);
-      const songData = response.data.data;
-      
       if (playlist) {
         dispatch({
           type: 'SET_PLAYLIST',
@@ -190,11 +233,15 @@ export const MusicPlayerProvider = ({ children }) => {
       } else {
         dispatch({
           type: 'SET_CURRENT_SONG',
-          payload: { song: songData }
+          payload: { song: song }
         });
       }
       
-      dispatch({ type: 'PLAY' });
+      // Don't auto-play immediately, let the audio load first
+      setTimeout(() => {
+        dispatch({ type: 'PLAY' });
+      }, 100);
+      
     } catch (error) {
       console.error('Error playing song:', error);
       message.error('Failed to play song');
@@ -209,20 +256,20 @@ export const MusicPlayerProvider = ({ children }) => {
   const nextSong = () => {
     if (state.playlist.length > 1) {
       dispatch({ type: 'NEXT_SONG' });
-      dispatch({ type: 'PLAY' });
+      setTimeout(() => dispatch({ type: 'PLAY' }), 100);
     }
   };
 
   const previousSong = () => {
     if (state.playlist.length > 1) {
       dispatch({ type: 'PREVIOUS_SONG' });
-      dispatch({ type: 'PLAY' });
+      setTimeout(() => dispatch({ type: 'PLAY' }), 100);
     }
   };
 
   const seekTo = (time) => {
     const audio = audioRef.current;
-    if (audio) {
+    if (audio && audio.duration) {
       audio.currentTime = time;
     }
   };

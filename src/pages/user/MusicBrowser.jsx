@@ -58,15 +58,18 @@ const MusicBrowser = () => {
     }
   };
 
-  const fetchFavorites = async () => {
-    try {
-      const response = await api.get('/user/favorites');
-      setFavorites(response.data.data.favorites.map(fav => fav.song._id));
-    } catch (error) {
-      console.error('Error fetching favorites:', error);
-    }
-  };
+ // In MusicBrowser.jsx - Replace the fetchFavorites function
 
+const fetchFavorites = async () => {
+  try {
+    const response = await api.get('/user/favorites');
+    setFavorites(response.data.data.favorites.map(fav => fav.song._id));
+  } catch (error) {
+    console.error('Error fetching favorites:', error);
+    // Don't show error message for missing favorites - just set empty array
+    setFavorites([]);
+  }
+};
   const handleSearch = (value) => {
     setFilters(prev => ({ ...prev, search: value }));
     setPagination(prev => ({ ...prev, current: 1 }));
@@ -92,24 +95,38 @@ const MusicBrowser = () => {
     }
   };
 
-  const handleToggleFavorite = async (songId) => {
-    try {
+// In MusicBrowser.jsx - Replace the handleToggleFavorite function
+
+const handleToggleFavorite = async (songId) => {
+  try {
+    const isFavorite = favorites.includes(songId);
+    
+    if (isFavorite) {
+      await api.delete(`/user/favorites/${songId}`);
+      setFavorites(prev => prev.filter(id => id !== songId));
+      message.success('Removed from favorites');
+    } else {
+      await api.post(`/user/favorites/${songId}`);
+      setFavorites(prev => [...prev, songId]);
+      message.success('Added to favorites');
+    }
+  } catch (error) {
+    console.error('Error toggling favorite:', error);
+    // If favorites endpoint doesn't exist, just update local state
+    if (error.response?.status === 404) {
       const isFavorite = favorites.includes(songId);
-      
       if (isFavorite) {
-        await api.delete(`/user/favorites/${songId}`);
         setFavorites(prev => prev.filter(id => id !== songId));
-        message.success('Removed from favorites');
+        message.success('Removed from favorites (local only)');
       } else {
-        await api.post(`/user/favorites/${songId}`);
         setFavorites(prev => [...prev, songId]);
-        message.success('Added to favorites');
+        message.success('Added to favorites (local only)');
       }
-    } catch (error) {
-      console.error('Error toggling favorite:', error);
+    } else {
       message.error('Failed to update favorites');
     }
-  };
+  }
+};
 
   const handleAddToQueue = (song) => {
     addToQueue(song);
