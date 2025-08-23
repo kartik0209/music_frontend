@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, Row, Col, Input, Select, Button, Pagination, Typography, Avatar, Tag, Empty, message } from 'antd';
 import { PlayCircleOutlined, HeartOutlined, HeartFilled, SearchOutlined, FilterOutlined, PlusOutlined } from '@ant-design/icons';
 import { useMusicPlayer } from '../../contexts/MusicContext';
-import api from '../../utils/api';
+import { songsAPI, usersAPI } from '../../utils/api';
 import './MusicBrowser.scss';
 
 const { Title, Text } = Typography;
@@ -43,33 +43,50 @@ const MusicBrowser = () => {
         ...filters
       };
       
-      const response = await api.get('/songs', { params });
-      console.log(response);
-      setSongs(response.data.data.songs);
-      setPagination(prev => ({
-        ...prev,
-        total: response.data.data.pagination.total
-      }));
+      const response = await songsAPI.getSongs(params);
+      console.log('Songs response:', response);
+      
+      // Handle different response structures
+      if (response.success && response.data) {
+        setSongs(response.data.songs || []);
+        setPagination(prev => ({
+          ...prev,
+          total: response.data.pagination?.total || response.data.total || 0
+        }));
+      } else {
+        setSongs([]);
+      }
     } catch (error) {
       console.error('Error fetching songs:', error);
       message.error('Failed to fetch songs');
+      setSongs([]);
     } finally {
       setLoading(false);
     }
   };
 
- // In MusicBrowser.jsx - Replace the fetchFavorites function
+  const fetchFavorites = async () => {
+    try {
+      const response = await usersAPI.getFavorites();
+      if (response.success && response.data) {
+        // Handle different favorite response structures
+        if (Array.isArray(response.data.favorites)) {
+          setFavorites(response.data.favorites.map(fav => 
+            typeof fav === 'string' ? fav : fav.song?._id || fav._id
+          ));
+        } else if (Array.isArray(response.data)) {
+          setFavorites(response.data.map(fav => 
+            typeof fav === 'string' ? fav : fav.song?._id || fav._id
+          ));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching favorites:', error);
+      // Don't show error message for missing favorites - just set empty array
+      setFavorites([]);
+    }
+  };
 
-const fetchFavorites = async () => {
-  try {
-    const response = await api.get('/user/favorites');
-    setFavorites(response.data.data.favorites.map(fav => fav.song._id));
-  } catch (error) {
-    console.error('Error fetching favorites:', error);
-    // Don't show error message for missing favorites - just set empty array
-    setFavorites([]);
-  }
-};
   const handleSearch = (value) => {
     setFilters(prev => ({ ...prev, search: value }));
     setPagination(prev => ({ ...prev, current: 1 }));
@@ -83,50 +100,55 @@ const fetchFavorites = async () => {
   const handlePlay = async (song) => {
     try {
       await playSong(song, songs, songs.findIndex(s => s._id === song._id));
-      await api.post(`/songs/${song._id}/play`);
-      setSongs(prev => prev.map(s => 
-        s._id === song._id 
-          ? { ...s, playCount: s.playCount + 1 }
-          : s
-      ));
+      
+      // Increment play count on server
+      try {
+        await songsAPI.playSong(song._id);
+        setSongs(prev => prev.map(s => 
+          s._id === song._id 
+            ? { ...s, playCount: (s.playCount || 0) + 1 }
+            : s
+        ));
+      } catch (playError) {
+        console.error('Error incrementing play count:', playError);
+        // Don't show error to user, just continue playing
+      }
     } catch (error) {
       console.error('Error playing song:', error);
       message.error('Failed to play song');
     }
   };
 
-// In MusicBrowser.jsx - Replace the handleToggleFavorite function
-
-const handleToggleFavorite = async (songId) => {
-  try {
-    const isFavorite = favorites.includes(songId);
-    
-    if (isFavorite) {
-      await api.delete(`/user/favorites/${songId}`);
-      setFavorites(prev => prev.filter(id => id !== songId));
-      message.success('Removed from favorites');
-    } else {
-      await api.post(`/user/favorites/${songId}`);
-      setFavorites(prev => [...prev, songId]);
-      message.success('Added to favorites');
-    }
-  } catch (error) {
-    console.error('Error toggling favorite:', error);
-    // If favorites endpoint doesn't exist, just update local state
-    if (error.response?.status === 404) {
+  const handleToggleFavorite = async (songId) => {
+    try {
       const isFavorite = favorites.includes(songId);
+      
       if (isFavorite) {
+        await usersAPI.removeFromFavorites(songId);
         setFavorites(prev => prev.filter(id => id !== songId));
-        message.success('Removed from favorites (local only)');
+        message.success('Removed from favorites');
       } else {
+        await usersAPI.addToFavorites(songId);
         setFavorites(prev => [...prev, songId]);
-        message.success('Added to favorites (local only)');
+        message.success('Added to favorites');
       }
-    } else {
-      message.error('Failed to update favorites');
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      // If favorites endpoint doesn't exist, just update local state
+      if (error.response?.status === 404) {
+        const isFavorite = favorites.includes(songId);
+        if (isFavorite) {
+          setFavorites(prev => prev.filter(id => id !== songId));
+          message.success('Removed from favorites (local only)');
+        } else {
+          setFavorites(prev => [...prev, songId]);
+          message.success('Added to favorites (local only)');
+        }
+      } else {
+        message.error('Failed to update favorites');
+      }
     }
-  }
-};
+  };
 
   const handleAddToQueue = (song) => {
     addToQueue(song);
@@ -149,6 +171,14 @@ const handleToggleFavorite = async (songId) => {
       return JSON.stringify(value);
     }
     return String(value || '');
+  };
+
+  // Helper function to get cover image URL
+  const getCoverImageUrl = (song) => {
+    if (song.coverImage?.secureUrl) return song.coverImage.secureUrl;
+    if (song.coverImage?.url) return song.coverImage.url;
+    if (song.coverUrl) return song.coverUrl;
+    return '/default-cover.jpg';
   };
 
   return (
@@ -252,7 +282,8 @@ const handleToggleFavorite = async (songId) => {
           songs.map((song) => {
             const songTitle = getStringValue(song.title);
             const artistName = getStringValue(song.artist);
-            const albumName = getStringValue(song.album);
+            const albumName = getStringValue(song.album?.name || song.album);
+            const coverImageUrl = getCoverImageUrl(song);
             
             return (
               <Col xs={24} sm={12} md={8} lg={6} key={song._id}>
@@ -262,7 +293,7 @@ const handleToggleFavorite = async (songId) => {
                     <div className="song-cover">
                       <img
                         alt={songTitle}
-                        src={song.coverUrl || '/default-cover.jpg'}
+                        src={coverImageUrl}
                         onError={(e) => {
                           e.target.src = '/default-cover.jpg';
                         }}
@@ -337,11 +368,20 @@ const handleToggleFavorite = async (songId) => {
                           )}
                         </div>
                         <div className="song-tags">
-                          {Array.isArray(song.genre) && song.genre.map(g => (
-                            <Tag key={g} color="blue" size="small">{getStringValue(g)}</Tag>
+                          {Array.isArray(song.genre) && song.genre.map((g, index) => (
+                            <Tag key={index} color="blue" size="small">
+                              {getStringValue(g)}
+                            </Tag>
                           ))}
-                          {song.language && (
-                            <Tag color="green" size="small">{getStringValue(song.language)}</Tag>
+                          {!Array.isArray(song.genre) && song.genre && (
+                            <Tag color="blue" size="small">
+                              {getStringValue(song.genre)}
+                            </Tag>
+                          )}
+                          {(song.language || song.songLanguage) && (
+                            <Tag color="green" size="small">
+                              {getStringValue(song.language || song.songLanguage)}
+                            </Tag>
                           )}
                         </div>
                         <div className="uploader-info">
@@ -351,7 +391,7 @@ const handleToggleFavorite = async (songId) => {
                             icon={<PlayCircleOutlined />}
                           />
                           <Text type="secondary" className="uploader-name">
-                            {getStringValue(song.uploadedBy?.username)}
+                            {getStringValue(song.uploadedBy?.username || 'Unknown')}
                           </Text>
                         </div>
                       </div>

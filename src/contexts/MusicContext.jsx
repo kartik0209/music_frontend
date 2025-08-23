@@ -1,6 +1,6 @@
 import { createContext, useContext, useReducer, useRef, useEffect } from 'react';
 import { message } from 'antd';
-import api from '../utils/api';
+import { streamingAPI } from '../utils/api';
 
 const MusicPlayerContext = createContext();
 
@@ -15,7 +15,8 @@ const initialState = {
   isLoading: false,
   shuffle: false,
   repeat: 'none',
-  showPlayer: false
+  showPlayer: false,
+  streamUrl: null
 };
 
 const musicPlayerReducer = (state, action) => {
@@ -26,7 +27,8 @@ const musicPlayerReducer = (state, action) => {
         currentSong: action.payload.song,
         playlist: action.payload.playlist || [action.payload.song],
         currentIndex: action.payload.index || 0,
-        showPlayer: true
+        showPlayer: true,
+        streamUrl: null // Reset stream URL when changing songs
       };
     
     case 'SET_PLAYLIST':
@@ -35,8 +37,12 @@ const musicPlayerReducer = (state, action) => {
         playlist: action.payload.playlist,
         currentIndex: action.payload.index || 0,
         currentSong: action.payload.playlist[action.payload.index || 0],
-        showPlayer: true
+        showPlayer: true,
+        streamUrl: null
       };
+    
+    case 'SET_STREAM_URL':
+      return { ...state, streamUrl: action.payload };
     
     case 'PLAY':
       return { ...state, isPlaying: true };
@@ -64,7 +70,8 @@ const musicPlayerReducer = (state, action) => {
       return {
         ...state,
         currentIndex: nextIndex,
-        currentSong: state.playlist[nextIndex]
+        currentSong: state.playlist[nextIndex],
+        streamUrl: null
       };
     
     case 'PREVIOUS_SONG':
@@ -74,7 +81,8 @@ const musicPlayerReducer = (state, action) => {
       return {
         ...state,
         currentIndex: prevIndex,
-        currentSong: state.playlist[prevIndex]
+        currentSong: state.playlist[prevIndex],
+        streamUrl: null
       };
     
     case 'TOGGLE_SHUFFLE':
@@ -130,10 +138,22 @@ export const MusicPlayerProvider = ({ children }) => {
       console.error('Audio error:', e);
       dispatch({ type: 'SET_LOADING', payload: false });
       dispatch({ type: 'PAUSE' });
+      message.error('Audio playback failed. Please try again.');
     };
 
     const handleLoadedData = () => {
       dispatch({ type: 'SET_LOADING', payload: false });
+    };
+
+    const handleLoadedMetadata = () => {
+      dispatch({ type: 'SET_LOADING', payload: false });
+      dispatch({
+        type: 'UPDATE_TIME',
+        payload: {
+          currentTime: audio.currentTime,
+          duration: audio.duration || 0
+        }
+      });
     };
 
     audio.addEventListener('timeupdate', updateTime);
@@ -141,6 +161,7 @@ export const MusicPlayerProvider = ({ children }) => {
     audio.addEventListener('loadstart', handleLoadStart);
     audio.addEventListener('canplay', handleCanPlay);
     audio.addEventListener('loadeddata', handleLoadedData);
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
     audio.addEventListener('error', handleError);
 
     return () => {
@@ -149,69 +170,90 @@ export const MusicPlayerProvider = ({ children }) => {
       audio.removeEventListener('loadstart', handleLoadStart);
       audio.removeEventListener('canplay', handleCanPlay);
       audio.removeEventListener('loadeddata', handleLoadedData);
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       audio.removeEventListener('error', handleError);
     };
   }, [state.repeat, state.currentIndex, state.playlist.length]);
 
-  // Handle audio source changes
+  // Handle getting stream URL when current song changes
+  useEffect(() => {
+    const loadStreamUrl = async () => {
+      if (!state.currentSong || !state.currentSong._id) return;
+
+      try {
+        dispatch({ type: 'SET_LOADING', payload: true });
+        
+        const response = await streamingAPI.getStreamUrl(state.currentSong._id);
+        
+        if (response.success && response.data.streamUrl) {
+          dispatch({ type: 'SET_STREAM_URL', payload: response.data.streamUrl });
+        } else {
+          throw new Error('No stream URL returned');
+        }
+        
+      } catch (error) {
+        console.error('Error getting stream URL:', error);
+        message.error('Failed to load audio stream');
+        dispatch({ type: 'SET_LOADING', payload: false });
+      }
+    };
+
+    loadStreamUrl();
+  }, [state.currentSong?._id]);
+
+  // Handle audio source changes when stream URL is available
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio || !state.currentSong) return;
+    if (!audio || !state.streamUrl) return;
 
-    const token = localStorage.getItem('token');
-    if (!token) {
-      console.error('No authentication token found');
-      return;
-    }
-
-    // Create the audio URL with token
-    const audioUrl = `http://localhost:5000/api/stream/audio/${state.currentSong._id}?token=${token}`;
-    
-    // Reset audio state
     dispatch({ type: 'SET_LOADING', payload: true });
     
-    // Set crossorigin to handle CORS properly
-    audio.crossOrigin = 'use-credentials';
+    // Set audio properties for better streaming
+    audio.crossOrigin = 'anonymous';
     audio.preload = 'metadata';
     
-    // Set the source
-    audio.src = audioUrl;
+    // Set the Cloudinary URL directly
+    audio.src = state.streamUrl;
     
-    console.log('Loading audio from:', audioUrl);
-  }, [state.currentSong]);
+    console.log('Loading audio from Cloudinary:', state.streamUrl);
+    
+  }, [state.streamUrl]);
 
   // Handle play/pause state changes
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio) return;
+    if (!audio || !state.streamUrl) return;
 
     if (state.isPlaying) {
-      if (audio.readyState >= 3) { // HAVE_FUTURE_DATA
-        audio.play().catch(error => {
+      const playAudio = async () => {
+        try {
+          await audio.play();
+        } catch (error) {
           console.error('Error playing audio:', error);
           if (error.name !== 'AbortError') {
             dispatch({ type: 'PAUSE' });
             message.error('Failed to play audio. Please check your connection.');
           }
-        });
+        }
+      };
+
+      if (audio.readyState >= 3) { // HAVE_FUTURE_DATA
+        playAudio();
       } else {
         // Wait for audio to be ready
         const handleCanPlay = () => {
-          audio.play().catch(error => {
-            console.error('Error playing audio:', error);
-            if (error.name !== 'AbortError') {
-              dispatch({ type: 'PAUSE' });
-              message.error('Failed to play audio. Please check your connection.');
-            }
-          });
+          playAudio();
           audio.removeEventListener('canplay', handleCanPlay);
         };
         audio.addEventListener('canplay', handleCanPlay);
+        
+        // Cleanup listener if component unmounts
+        return () => audio.removeEventListener('canplay', handleCanPlay);
       }
     } else {
       audio.pause();
     }
-  }, [state.isPlaying]);
+  }, [state.isPlaying, state.streamUrl]);
 
   // Handle volume changes
   useEffect(() => {
@@ -223,8 +265,6 @@ export const MusicPlayerProvider = ({ children }) => {
 
   const playSong = async (song, playlist = null, index = 0) => {
     try {
-      dispatch({ type: 'SET_LOADING', payload: true });
-      
       if (playlist) {
         dispatch({
           type: 'SET_PLAYLIST',
@@ -295,7 +335,7 @@ export const MusicPlayerProvider = ({ children }) => {
     
     try {
       const percentage = (state.currentTime / state.duration) * 100;
-      await api.post(`/stream/complete/${state.currentSong._id}`, {
+      await streamingAPI.reportCompletion(state.currentSong._id, {
         duration: state.currentTime,
         percentage
       });

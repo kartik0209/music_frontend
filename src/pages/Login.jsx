@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Form, Input, Button, Card, Typography, Divider, Alert } from 'antd';
+import { Form, Input, Button, Card, Typography, Alert } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
 import './Login.scss';
@@ -29,7 +29,7 @@ const Login = () => {
     if (error) {
       clearError();
     }
-  }, []);
+  }, [error, clearError]);
 
   const handleSubmit = async (values) => {
     setLoading(true);
@@ -44,25 +44,15 @@ const Login = () => {
     setLoading(false);
   };
 
-  const handleDemoLogin = async (role) => {
-    setLoading(true);
-    const credentials = role === 'admin' 
-      ? { login: 'admin', password: 'admin123' }
-      : { login: 'user', password: 'user123' };
-    
-    await login(credentials);
-    setLoading(false);
-  };
-
   return (
     <div className="login-container">
       <div className="login-content">
         <div className="login-header">
           <div className="logo">
-            {/* <MusicOutlined className="logo-icon" /> */}
+            
             <Title level={2} className="logo-text">MusicApp</Title>
           </div>
-          <Text className="subtitle">Sign in to your account</Text>
+          <Text className="subtitle">Welcome back! Sign in to your account</Text>
         </div>
 
         <Card className="login-card">
@@ -125,38 +115,16 @@ const Login = () => {
                 loading={loading}
                 size="large"
                 block
+                className="login-btn"
               >
                 Sign In
               </Button>
             </Form.Item>
           </Form>
 
-          <Divider>Demo Accounts</Divider>
-
-          <div className="demo-buttons">
-            <Button
-              onClick={() => handleDemoLogin('user')}
-              loading={loading}
-              size="large"
-              block
-              className="demo-btn user-demo"
-            >
-              Login as User
-            </Button>
-            <Button
-              onClick={() => handleDemoLogin('admin')}
-              loading={loading}
-              size="large"
-              block
-              className="demo-btn admin-demo"
-            >
-              Login as Admin
-            </Button>
-          </div>
-
           <div className="login-footer">
             <Text>
-              Don't have an account? <Link to="/register">Sign up</Link>
+              Don't have an account? <Link to="/register">Create one now</Link>
             </Text>
           </div>
         </Card>

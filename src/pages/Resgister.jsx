@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Form, Input, Button, Card, Typography, Alert } from 'antd';
-import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
+import { UserOutlined, LockOutlined, MailOutlined} from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
 import './Resgister.scss';
 
@@ -29,7 +29,7 @@ const Register = () => {
     if (error) {
       clearError();
     }
-  }, []);
+  }, [error, clearError]);
 
   const handleSubmit = async (values) => {
     setLoading(true);
@@ -37,7 +37,8 @@ const Register = () => {
       username: values.username,
       email: values.email,
       password: values.password,
-      role: 'user' // Default role is user
+      firstName: values.firstName,
+      lastName: values.lastName
     });
     
     if (success) {
@@ -51,9 +52,10 @@ const Register = () => {
       <div className="register-content">
         <div className="register-header">
           <div className="logo">
+            
             <Title level={2} className="logo-text">MusicApp</Title>
           </div>
-          <Text className="subtitle">Create your account</Text>
+          <Text className="subtitle">Join the music community today</Text>
         </div>
 
         <Card className="register-card">
@@ -75,6 +77,32 @@ const Register = () => {
             layout="vertical"
             requiredMark={false}
           >
+            <div className="form-row">
+              <Form.Item
+                name="firstName"
+                label="First Name"
+                className="form-item-half"
+              >
+                <Input
+                  prefix={<UserOutlined />}
+                  placeholder="First name"
+                  size="large"
+                />
+              </Form.Item>
+
+              <Form.Item
+                name="lastName"
+                label="Last Name"
+                className="form-item-half"
+              >
+                <Input
+                  prefix={<UserOutlined />}
+                  placeholder="Last name"
+                  size="large"
+                />
+              </Form.Item>
+            </div>
+
             <Form.Item
               name="username"
               label="Username"
@@ -91,7 +119,7 @@ const Register = () => {
             >
               <Input
                 prefix={<UserOutlined />}
-                placeholder="Enter username"
+                placeholder="Choose a username"
                 size="large"
               />
             </Form.Item>
@@ -112,7 +140,7 @@ const Register = () => {
             >
               <Input
                 prefix={<MailOutlined />}
-                placeholder="Enter email"
+                placeholder="Enter your email"
                 size="large"
               />
             </Form.Item>
@@ -133,7 +161,7 @@ const Register = () => {
             >
               <Input.Password
                 prefix={<LockOutlined />}
-                placeholder="Enter password"
+                placeholder="Create a password"
                 size="large"
               />
             </Form.Item>
@@ -159,7 +187,7 @@ const Register = () => {
             >
               <Input.Password
                 prefix={<LockOutlined />}
-                placeholder="Confirm password"
+                placeholder="Confirm your password"
                 size="large"
               />
             </Form.Item>
@@ -171,6 +199,7 @@ const Register = () => {
                 loading={loading}
                 size="large"
                 block
+                className="register-btn"
               >
                 Create Account
               </Button>
@@ -179,7 +208,7 @@ const Register = () => {
 
           <div className="register-footer">
             <Text>
-              Already have an account? <Link to="/login">Sign in</Link>
+              Already have an account? <Link to="/login">Sign in here</Link>
             </Text>
           </div>
         </Card>
