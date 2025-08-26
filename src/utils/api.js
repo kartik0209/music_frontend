@@ -2,7 +2,7 @@ import axios from 'axios';
 import { message } from 'antd';
 
 // Base URL - adjust according to your backend
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const BASE_URL = import.meta.env.VITE_API_URL || 'https://music-backend-p7ff.onrender.com/api';
 
 // Create axios instance
 const api = axios.create({
