@@ -56,7 +56,7 @@ const MusicPlayer = () => {
     if (!currentSong) return;
     
     try {
-      const response = await api.get('/user/favorites');
+      const response = await api.get('/users/favorites');
       const favorites = response.data.data.favorites;
       setIsFavorite(favorites.some(fav => fav.song._id === currentSong._id));
     } catch (error) {
@@ -69,10 +69,10 @@ const MusicPlayer = () => {
     
     try {
       if (isFavorite) {
-        await api.delete(`/user/favorites/${currentSong._id}`);
+        await api.delete(`/users/favorites/${currentSong._id}`);
         setIsFavorite(false);
       } else {
-        await api.post(`/user/favorites/${currentSong._id}`);
+        await api.post(`/users/favorites/${currentSong._id}`);
         setIsFavorite(true);
       }
     } catch (error) {

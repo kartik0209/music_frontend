@@ -309,9 +309,9 @@ export const usersAPI = {
   getUserStats: (id) => api.get(`/users/${id}/stats`),
   
   // Favorites API
-  getFavorites: () => api.get('/user/favorites'),
-  addToFavorites: (songId) => api.post(`/user/favorites/${songId}`),
-  removeFromFavorites: (songId) => api.delete(`/user/favorites/${songId}`)
+  getFavorites: () => api.get('/users/favorites'),
+  addToFavorites: (songId) => api.post(`/users/favorites/${songId}`),
+  removeFromFavorites: (songId) => api.delete(`/users/favorites/${songId}`)
 };
 
 // Admin API endpoints

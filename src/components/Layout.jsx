@@ -43,12 +43,6 @@ const Layout = () => {
             onClick: () => navigate('/profile'),
         },
         {
-            key: 'settings',
-            label: 'Settings',
-            icon: <SettingOutlined />,
-            onClick: () => navigate('/settings'),
-        },
-        {
             type: 'divider',
         },
         {
@@ -117,18 +111,7 @@ const Layout = () => {
             label: 'Manage Users',
             onClick: () => navigate('/admin/users'),
         },
-        {
-            key: '/admin/analytics',
-            icon: <BarChartOutlined />,
-            label: 'Analytics',
-            onClick: () => navigate('/admin/analytics'),
-        },
-        {
-            key: '/admin/settings',
-            icon: <SettingOutlined />,
-            label: 'Settings',
-            onClick: () => navigate('/admin/settings'),
-        }
+       
     ];
 
     const getMenuItems = () => {
@@ -187,10 +170,7 @@ const Layout = () => {
                                         icon={<UserOutlined />}
                                         className="user-avatar"
                                     />
-                                    <div className="user-info">
-                                        <span className="username">{user?.username}</span>
-                                        <span className="user-role">{user?.role}</span>
-                                    </div>
+                                   
                                 </div>
                             </Dropdown>
                         </div>

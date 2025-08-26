@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Card, Table, Button, Input, Select, Space, Tag, Avatar, Typography,
-    message, Switch, Modal, Image, Row, Col, Statistic, Dropdown, Drawer
+    message, Switch, Modal, Image, Row, Col, Statistic, Dropdown, Drawer,
+    Divider
 } from 'antd';
 import {
     PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, EyeOutlined,
@@ -148,7 +149,12 @@ const AdminSongs = () => {
         { title: 'Genre', dataIndex: 'genre', key: 'genre', render: (genres) => genres.map(g => <Tag key={g}>{g}</Tag>) },
         { title: 'Language', dataIndex: 'language', key: 'language' },
         { title: 'Status', dataIndex: 'status', key: 'status', render: (s) => <Tag color={getStatusColor(s)}>{s.toUpperCase()}</Tag> },
-        { title: 'Uploaded', dataIndex: 'uploadDate', key: 'uploadDate', render: (d) => new Date(d).toLocaleDateString() },
+        { 
+    title: 'Date Added', 
+    dataIndex: 'createdAt', 
+    key: 'createdAt', 
+    render: (d) => (d ? new Date(d).toLocaleDateString() : 'N/A') 
+},
         {
             title: 'Actions', key: 'actions', width: 60, align: 'center',
             render: (_, record) => <Dropdown menu={{ items: actionMenuItems(record) }} trigger={['click']}><Button type="text" icon={<MoreOutlined />} /></Dropdown>,
@@ -212,21 +218,48 @@ const AdminSongs = () => {
                 </Space>
             </Drawer>
 
-            <Modal title="Song Preview" open={!!previewSong} onCancel={() => setPreviewSong(null)} footer={null} width={700}>
-                {previewSong && (
-                    <Space direction="vertical" size="large">
-                        <Space align="start" size="large">
-                            <Image src={previewSong.coverUrl} width={200} style={{ borderRadius: 8 }} />
-                            <div>
-                                <Title level={3}>{previewSong.title}</Title>
-                                <Text strong>Artist:</Text> <Text>{previewSong.artist}</Text><br />
-                                <Text strong>Album:</Text> <Text>{previewSong.album?.name || 'N/A'}</Text><br />
-                                <Text strong>Duration:</Text> <Text>{formatDuration(previewSong.duration)}</Text>
-                            </div>
-                        </Space>
-                    </Space>
-                )}
-            </Modal>
+<Modal
+  title="Song Preview"
+  open={!!previewSong}
+  onCancel={() => setPreviewSong(null)}
+  footer={null}
+  width={700}
+  destroyOnClose // Add this to stop audio when modal is closed
+>
+  {previewSong && (
+    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+      <Space align="start" size="large">
+        <Image
+          src={previewSong.coverUrl}
+          width={200}
+          style={{ borderRadius: 8 }}
+        />
+        <div>
+          <Title level={3}>{previewSong.title}</Title>
+          <Text strong>Artist:</Text> <Text>{previewSong.artist}</Text>
+          <br />
+          
+          <br />
+          <Text strong>Duration:</Text> <Text>{formatDuration(previewSong.duration)}</Text>
+        </div>
+      </Space>
+
+      {/* ✨ ADD THIS SECTION TO PLAY THE SONG ✨ */}
+      <Divider />
+      <audio
+        controls
+        src={previewSong.audioFile?.secureUrl || previewSong.audioFile?.url}
+        style={{ width: '100%' }}
+      >
+        Your browser does not support the audio element.
+      </audio>
+      {/* ✨ END OF ADDED SECTION ✨ */}
+      
+    </Space>
+  )}
+</Modal>
+
+
         </Space>
     );
 };

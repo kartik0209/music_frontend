@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Typography, Row, Col, Statistic, Spin, Alert, Space, Progress, List } from 'antd';
-import { UserOutlined, CustomerServiceOutlined, PlaySquareOutlined, DatabaseOutlined, StarOutlined, ArrowUpOutlined } from '@ant-design/icons';
+import { UserOutlined, CustomerServiceOutlined, PlaySquareOutlined, DatabaseOutlined, ArrowUpOutlined } from '@ant-design/icons';
 import { Column } from '@ant-design/charts';
 import { useAuth } from '../contexts/AuthContext';
-import api from '../utils/api'; // Assuming you have a configured axios instance
+import api from '../utils/api';
 
 const { Title, Text } = Typography;
 
@@ -78,8 +78,9 @@ const AdminDashboard = () => {
                                     <div style={{ textAlign: 'center', marginTop: '10px' }}>
                                         <Progress
                                             type="dashboard"
-                                            percent={(stats.songs.averageRating / 5) * 100}
-                                            format={(percent) => `${(percent / 20).toFixed(2)} / 5`}
+                                            percent={stats.songs.averageRating > 0 ? (stats.songs.averageRating / 5) * 100 : 0}
+                                            // ✨ IMPROVEMENT: Show 'N/A' if no ratings exist, otherwise show the formatted rating.
+                                            format={() => stats.songs.averageRating > 0 ? `${stats.songs.averageRating.toFixed(2)} / 5` : 'N/A'}
                                         />
                                         <Text strong style={{ display: 'block', marginTop: '8px' }}>Average Rating</Text>
                                     </div>

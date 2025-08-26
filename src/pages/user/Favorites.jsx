@@ -18,7 +18,7 @@ const Favorites = () => {
 
   const fetchFavorites = async () => {
     try {
-      const response = await api.get('/user/favorites');
+      const response = await api.get('/users/favorites');
       setFavorites(response.data.data.favorites);
     } catch (error) {
       console.error('Error fetching favorites:', error);
@@ -28,16 +28,17 @@ const Favorites = () => {
     }
   };
 
-  const handleRemoveFavorite = async (songId) => {
+const handleRemoveFavorite = async (songId) => {
     try {
-      await api.delete(`/user/favorites/${songId}`);
+      await api.delete(`/users/favorites/${songId}`);
+      // Fix: Filter by fav.song._id since songId is the song's ID
       setFavorites(prev => prev.filter(fav => fav.song._id !== songId));
       message.success('Removed from favorites');
     } catch (error) {
       console.error('Error removing favorite:', error);
       message.error('Failed to remove from favorites');
     }
-  };
+};
 
   const handlePlay = async (song) => {
     try {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, Row, Col, Input, Select, Button, Pagination, Typography, Avatar, Tag, Empty, message } from 'antd';
 import { PlayCircleOutlined, HeartOutlined, HeartFilled, SearchOutlined, FilterOutlined, PlusOutlined } from '@ant-design/icons';
 import { useMusicPlayer } from '../../contexts/MusicContext';
@@ -29,12 +29,8 @@ const MusicBrowser = () => {
 
   const { playSong, addToQueue } = useMusicPlayer();
 
-  useEffect(() => {
-    fetchSongs();
-    fetchFavorites();
-  }, [pagination.current, filters]);
-
-  const fetchSongs = async () => {
+  // Memoize the fetch functions to prevent unnecessary re-renders
+  const fetchSongs = useCallback(async () => {
     try {
       setLoading(true);
       const params = {
@@ -44,7 +40,6 @@ const MusicBrowser = () => {
       };
       
       const response = await songsAPI.getSongs(params);
-      console.log('Songs response:', response);
       
       // Handle different response structures
       if (response.success && response.data) {
@@ -63,9 +58,9 @@ const MusicBrowser = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [pagination.current, pagination.pageSize, filters]);
 
-  const fetchFavorites = async () => {
+  const fetchFavorites = useCallback(async () => {
     try {
       const response = await usersAPI.getFavorites();
       if (response.success && response.data) {
@@ -82,14 +77,33 @@ const MusicBrowser = () => {
       }
     } catch (error) {
       console.error('Error fetching favorites:', error);
-      // Don't show error message for missing favorites - just set empty array
       setFavorites([]);
     }
-  };
+  }, []);
+
+  // Use useEffect with proper dependencies
+  useEffect(() => {
+    fetchSongs();
+  }, [fetchSongs]);
+
+  useEffect(() => {
+    fetchFavorites();
+  }, [fetchFavorites]);
+
+  // Debounce search to prevent too many API calls
+  const debouncedSearch = useMemo(() => {
+    let timeout;
+    return (value) => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        setFilters(prev => ({ ...prev, search: value }));
+        setPagination(prev => ({ ...prev, current: 1 }));
+      }, 500);
+    };
+  }, []);
 
   const handleSearch = (value) => {
-    setFilters(prev => ({ ...prev, search: value }));
-    setPagination(prev => ({ ...prev, current: 1 }));
+    debouncedSearch(value);
   };
 
   const handleFilterChange = (key, value) => {
@@ -101,18 +115,23 @@ const MusicBrowser = () => {
     try {
       await playSong(song, songs, songs.findIndex(s => s._id === song._id));
       
-      // Increment play count on server
-      try {
-        await songsAPI.playSong(song._id);
+      // Update local play count immediately for better UX
+      setSongs(prev => prev.map(s => 
+        s._id === song._id 
+          ? { ...s, playCount: (s.playCount || 0) + 1 }
+          : s
+      ));
+      
+      // Increment play count on server in background
+      songsAPI.playSong(song._id).catch(error => {
+        console.error('Error incrementing play count:', error);
+        // Revert local change if server update fails
         setSongs(prev => prev.map(s => 
           s._id === song._id 
-            ? { ...s, playCount: (s.playCount || 0) + 1 }
+            ? { ...s, playCount: Math.max(0, (s.playCount || 0) - 1) }
             : s
         ));
-      } catch (playError) {
-        console.error('Error incrementing play count:', playError);
-        // Don't show error to user, just continue playing
-      }
+      });
     } catch (error) {
       console.error('Error playing song:', error);
       message.error('Failed to play song');
@@ -123,27 +142,35 @@ const MusicBrowser = () => {
     try {
       const isFavorite = favorites.includes(songId);
       
+      // Optimistic update
+      if (isFavorite) {
+        setFavorites(prev => prev.filter(id => id !== songId));
+      } else {
+        setFavorites(prev => [...prev, songId]);
+      }
+
+      // Server update
       if (isFavorite) {
         await usersAPI.removeFromFavorites(songId);
-        setFavorites(prev => prev.filter(id => id !== songId));
         message.success('Removed from favorites');
       } else {
         await usersAPI.addToFavorites(songId);
-        setFavorites(prev => [...prev, songId]);
         message.success('Added to favorites');
       }
     } catch (error) {
       console.error('Error toggling favorite:', error);
-      // If favorites endpoint doesn't exist, just update local state
+      
+      // Revert optimistic update on error
+      const isFavorite = favorites.includes(songId);
+      if (!isFavorite) {
+        setFavorites(prev => prev.filter(id => id !== songId));
+      } else {
+        setFavorites(prev => [...prev, songId]);
+      }
+
+      // Handle 404 gracefully (favorites endpoint doesn't exist)
       if (error.response?.status === 404) {
-        const isFavorite = favorites.includes(songId);
-        if (isFavorite) {
-          setFavorites(prev => prev.filter(id => id !== songId));
-          message.success('Removed from favorites (local only)');
-        } else {
-          setFavorites(prev => [...prev, songId]);
-          message.success('Added to favorites (local only)');
-        }
+        message.info('Favorites feature not fully implemented');
       } else {
         message.error('Failed to update favorites');
       }
@@ -165,7 +192,6 @@ const MusicBrowser = () => {
   const getStringValue = (value) => {
     if (typeof value === 'string') return value;
     if (typeof value === 'object' && value !== null) {
-      // If it's an object, try to get a string representation
       if (value.name) return value.name;
       if (value.toString) return value.toString();
       return JSON.stringify(value);
@@ -199,6 +225,11 @@ const MusicBrowser = () => {
               enterButton={<SearchOutlined />}
               size="large"
               onSearch={handleSearch}
+              onChange={(e) => {
+                if (!e.target.value) {
+                  handleSearch('');
+                }
+              }}
             />
           </Col>
           <Col xs={12} md={4}>
@@ -249,6 +280,23 @@ const MusicBrowser = () => {
               <Option value="ratings.average">Highest Rated</Option>
             </Select>
           </Col>
+
+           <Col xs={12} md={4}>
+    <Select
+      placeholder="Mood"
+      allowClear
+      size="large"
+      style={{ width: '100%' }}
+      onChange={(value) => handleFilterChange('mood', value)}
+    >
+      <Option value="happy">Happy</Option>
+      <Option value="sad">Sad</Option>
+      <Option value="energetic">Energetic</Option>
+      <Option value="calm">Calm</Option>
+      <Option value="romantic">Romantic</Option>
+      <Option value="uplifting">Uplifting</Option>
+    </Select>
+  </Col>
           <Col xs={12} md={4}>
             <Button 
               icon={<FilterOutlined />} 

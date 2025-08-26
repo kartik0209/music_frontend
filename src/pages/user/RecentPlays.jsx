@@ -20,7 +20,7 @@ const RecentPlays = () => {
 
   const fetchRecentPlays = async () => {
     try {
-      const response = await api.get('/user/history');
+      const response = await api.get('/users/history');
       setRecentPlays(response.data.data.history);
     } catch (error) {
       console.error('Error fetching recent plays:', error);
@@ -32,7 +32,7 @@ const RecentPlays = () => {
 
   const fetchFavorites = async () => {
     try {
-      const response = await api.get('/user/favorites');
+      const response = await api.get('/users/favorites');
       setFavorites(response.data.data.favorites.map(fav => fav.song._id));
     } catch (error) {
       console.error('Error fetching favorites:', error);
@@ -55,11 +55,11 @@ const RecentPlays = () => {
       const isFavorite = favorites.includes(songId);
       
       if (isFavorite) {
-        await api.delete(`/user/favorites/${songId}`);
+        await api.delete(`/users/favorites/${songId}`);
         setFavorites(prev => prev.filter(id => id !== songId));
         message.success('Removed from favorites');
       } else {
-        await api.post(`/user/favorites/${songId}`);
+        await api.post(`/users/favorites/${songId}`);
         setFavorites(prev => [...prev, songId]);
         message.success('Added to favorites');
       }

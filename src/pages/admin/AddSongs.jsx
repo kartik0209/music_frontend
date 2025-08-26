@@ -73,106 +73,106 @@ const AddSong = () => {
     'arabic', 'chinese', 'japanese', 'korean', 'none'
   ];
 
-  const handleSubmit = async (values) => {
-    try {
-      setLoading(true);
-      setUploadProgress(0);
+    const handleSubmit = async (values) => {
+      try {
+        setLoading(true);
+        setUploadProgress(0);
 
-      if (!audioFile) {
-        message.error('Please upload an audio file');
-        return;
-      }
-
-      const formData = new FormData();
-      
-      // Basic song details
-      formData.append('title', values.title);
-      formData.append('artist', values.artist);
-      formData.append('duration', audioDuration || values.duration);
-      formData.append('language', values.language);
-      
-      // Handle genres (both predefined and custom)
-      const allGenres = [...(values.genres || []), ...customGenres];
-      allGenres.forEach(genre => {
-        formData.append('genre', genre);
-      });
-      
-      // Handle moods (both predefined and custom)
-      const allMoods = [...(values.moods || []), ...customMoods];
-      if (allMoods.length > 0) {
-        allMoods.forEach(mood => {
-          formData.append('mood', mood);
-        });
-      }
-
-      // Optional fields
-      if (values.album) {
-        formData.append('album', JSON.stringify({
-          name: values.album,
-          releaseDate: values.albumYear ? new Date(values.albumYear, 0, 1) : null,
-          totalTracks: values.totalTracks
-        }));
-      }
-      
-      if (values.lyrics) {
-        formData.append('lyrics', JSON.stringify({
-          text: values.lyrics,
-          language: values.lyricsLanguage || values.language,
-          hasExplicitContent: values.explicitContent || false
-        }));
-      }
-
-      if (values.tags && values.tags.length > 0) {
-        values.tags.forEach(tag => {
-          formData.append('tags', tag);
-        });
-      }
-
-      // Additional metadata
-      if (values.bpm || values.key || values.composer || values.producer || values.recordLabel) {
-        const metadata = {};
-        if (values.bpm) metadata.bpm = values.bpm;
-        if (values.key) metadata.key = values.key;
-        if (values.composer) metadata.composer = Array.isArray(values.composer) ? values.composer : [values.composer];
-        if (values.producer) metadata.producer = Array.isArray(values.producer) ? values.producer : [values.producer];
-        if (values.recordLabel) metadata.recordLabel = values.recordLabel;
-        if (values.copyright) metadata.copyright = values.copyright;
-        
-        formData.append('metadata', JSON.stringify(metadata));
-      }
-
-      // Files
-      formData.append('audio', audioFile);
-      if (coverFile) {
-        formData.append('cover', coverFile);
-      }
-
-      // Quality settings
-      if (values.quality) {
-        formData.append('quality', values.quality);
-      }
-
-      const response = await api.post('/songs', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-        onUploadProgress: (progressEvent) => {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          setUploadProgress(percentCompleted);
+        if (!audioFile) {
+          message.error('Please upload an audio file');
+          return;
         }
-      });
 
-      message.success('Song uploaded successfully!');
-      navigate('/admin/songs');
-      
-    } catch (error) {
-      console.error('Error uploading song:', error);
-      message.error(error.response?.data?.message || 'Failed to upload song');
-    } finally {
-      setLoading(false);
-      setUploadProgress(0);
-    }
-  };
+        const formData = new FormData();
+        
+        // Basic song details
+        formData.append('title', values.title);
+        formData.append('artist', values.artist);
+        formData.append('duration', audioDuration || values.duration);
+        formData.append('language', values.language);
+        
+        // Handle genres (both predefined and custom)
+        const allGenres = [...(values.genres || []), ...customGenres];
+        allGenres.forEach(genre => {
+          formData.append('genre', genre);
+        });
+        
+        // Handle moods (both predefined and custom)
+        const allMoods = [...(values.moods || []), ...customMoods];
+        if (allMoods.length > 0) {
+          allMoods.forEach(mood => {
+            formData.append('mood', mood);
+          });
+        }
+
+        // Optional fields
+        if (values.album) {
+          formData.append('album', JSON.stringify({
+            name: values.album,
+            releaseDate: values.albumYear ? new Date(values.albumYear, 0, 1) : null,
+            totalTracks: values.totalTracks
+          }));
+        }
+        
+        if (values.lyrics) {
+          formData.append('lyrics', JSON.stringify({
+            text: values.lyrics,
+            language: values.lyricsLanguage || values.language,
+            hasExplicitContent: values.explicitContent || false
+          }));
+        }
+
+        if (values.tags && values.tags.length > 0) {
+          values.tags.forEach(tag => {
+            formData.append('tags', tag);
+          });
+        }
+
+        // Additional metadata
+        if (values.bpm || values.key || values.composer || values.producer || values.recordLabel) {
+          const metadata = {};
+          if (values.bpm) metadata.bpm = values.bpm;
+          if (values.key) metadata.key = values.key;
+          if (values.composer) metadata.composer = Array.isArray(values.composer) ? values.composer : [values.composer];
+          if (values.producer) metadata.producer = Array.isArray(values.producer) ? values.producer : [values.producer];
+          if (values.recordLabel) metadata.recordLabel = values.recordLabel;
+          if (values.copyright) metadata.copyright = values.copyright;
+          
+          formData.append('metadata', JSON.stringify(metadata));
+        }
+
+        // Files
+        formData.append('audio', audioFile);
+        if (coverFile) {
+          formData.append('cover', coverFile);
+        }
+
+        // Quality settings
+        if (values.quality) {
+          formData.append('quality', values.quality);
+        }
+
+        const response = await api.post('/songs', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+          onUploadProgress: (progressEvent) => {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setUploadProgress(percentCompleted);
+          }
+        });
+
+        message.success('Song uploaded successfully!');
+        navigate('/admin/songs');
+        
+      } catch (error) {
+        console.error('Error uploading song:', error);
+        message.error(error.response?.data?.message || 'Failed to upload song');
+      } finally {
+        setLoading(false);
+        setUploadProgress(0);
+      }
+    };
 
   const handleAudioUpload = (file) => {
     const allowedMimeTypes = [

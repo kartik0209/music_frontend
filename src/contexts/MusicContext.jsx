@@ -1,4 +1,4 @@
-import { createContext, useContext, useReducer, useRef, useEffect } from 'react';
+import { createContext, useContext, useReducer, useRef, useEffect, useCallback } from 'react';
 import { message } from 'antd';
 import { streamingAPI } from '../utils/api';
 
@@ -28,7 +28,8 @@ const musicPlayerReducer = (state, action) => {
         playlist: action.payload.playlist || [action.payload.song],
         currentIndex: action.payload.index || 0,
         showPlayer: true,
-        streamUrl: null // Reset stream URL when changing songs
+        streamUrl: null,
+        isLoading: false // Reset loading when setting new song
       };
     
     case 'SET_PLAYLIST':
@@ -38,11 +39,12 @@ const musicPlayerReducer = (state, action) => {
         currentIndex: action.payload.index || 0,
         currentSong: action.payload.playlist[action.payload.index || 0],
         showPlayer: true,
-        streamUrl: null
+        streamUrl: null,
+        isLoading: false
       };
     
     case 'SET_STREAM_URL':
-      return { ...state, streamUrl: action.payload };
+      return { ...state, streamUrl: action.payload, isLoading: false };
     
     case 'PLAY':
       return { ...state, isPlaying: true };
@@ -71,7 +73,8 @@ const musicPlayerReducer = (state, action) => {
         ...state,
         currentIndex: nextIndex,
         currentSong: state.playlist[nextIndex],
-        streamUrl: null
+        streamUrl: null,
+        isLoading: false
       };
     
     case 'PREVIOUS_SONG':
@@ -82,7 +85,8 @@ const musicPlayerReducer = (state, action) => {
         ...state,
         currentIndex: prevIndex,
         currentSong: state.playlist[prevIndex],
-        streamUrl: null
+        streamUrl: null,
+        isLoading: false
       };
     
     case 'TOGGLE_SHUFFLE':
@@ -105,58 +109,75 @@ const musicPlayerReducer = (state, action) => {
 export const MusicPlayerProvider = ({ children }) => {
   const [state, dispatch] = useReducer(musicPlayerReducer, initialState);
   const audioRef = useRef(null);
+  const loadingRef = useRef(false); // Prevent multiple simultaneous loads
 
+  // Audio event handlers - moved to useCallback to prevent recreating
+  const handleTimeUpdate = useCallback(() => {
+    const audio = audioRef.current;
+    if (audio) {
+      dispatch({
+        type: 'UPDATE_TIME',
+        payload: {
+          currentTime: audio.currentTime,
+          duration: audio.duration || 0
+        }
+      });
+    }
+  }, []);
+
+  const handleEnded = useCallback(() => {
+    if (state.repeat === 'one') {
+      const audio = audioRef.current;
+      if (audio) {
+        audio.currentTime = 0;
+        audio.play();
+      }
+    } else if (state.repeat === 'all' || state.currentIndex < state.playlist.length - 1) {
+      nextSong();
+    } else {
+      dispatch({ type: 'PAUSE' });
+    }
+  }, [state.repeat, state.currentIndex, state.playlist.length]);
+
+  const handleLoadStart = useCallback(() => {
+    dispatch({ type: 'SET_LOADING', payload: true });
+  }, []);
+
+  const handleCanPlay = useCallback(() => {
+    dispatch({ type: 'SET_LOADING', payload: false });
+  }, []);
+  
+  const handleError = useCallback((e) => {
+    console.error('Audio error:', e);
+    dispatch({ type: 'SET_LOADING', payload: false });
+    dispatch({ type: 'PAUSE' });
+    message.error('Audio playback failed. Please try again.');
+  }, []);
+
+  const handleLoadedData = useCallback(() => {
+    dispatch({ type: 'SET_LOADING', payload: false });
+  }, []);
+
+  const handleLoadedMetadata = useCallback(() => {
+    const audio = audioRef.current;
+    dispatch({ type: 'SET_LOADING', payload: false });
+    if (audio) {
+      dispatch({
+        type: 'UPDATE_TIME',
+        payload: {
+          currentTime: audio.currentTime,
+          duration: audio.duration || 0
+        }
+      });
+    }
+  }, []);
+
+  // Set up audio event listeners
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const updateTime = () => {
-      dispatch({
-        type: 'UPDATE_TIME',
-        payload: {
-          currentTime: audio.currentTime,
-          duration: audio.duration || 0
-        }
-      });
-    };
-
-    const handleEnded = () => {
-      if (state.repeat === 'one') {
-        audio.currentTime = 0;
-        audio.play();
-      } else if (state.repeat === 'all' || state.currentIndex < state.playlist.length - 1) {
-        nextSong();
-      } else {
-        dispatch({ type: 'PAUSE' });
-      }
-    };
-
-    const handleLoadStart = () => dispatch({ type: 'SET_LOADING', payload: true });
-    const handleCanPlay = () => dispatch({ type: 'SET_LOADING', payload: false });
-    
-    const handleError = (e) => {
-      console.error('Audio error:', e);
-      dispatch({ type: 'SET_LOADING', payload: false });
-      dispatch({ type: 'PAUSE' });
-      message.error('Audio playback failed. Please try again.');
-    };
-
-    const handleLoadedData = () => {
-      dispatch({ type: 'SET_LOADING', payload: false });
-    };
-
-    const handleLoadedMetadata = () => {
-      dispatch({ type: 'SET_LOADING', payload: false });
-      dispatch({
-        type: 'UPDATE_TIME',
-        payload: {
-          currentTime: audio.currentTime,
-          duration: audio.duration || 0
-        }
-      });
-    };
-
-    audio.addEventListener('timeupdate', updateTime);
+    audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('ended', handleEnded);
     audio.addEventListener('loadstart', handleLoadStart);
     audio.addEventListener('canplay', handleCanPlay);
@@ -165,7 +186,7 @@ export const MusicPlayerProvider = ({ children }) => {
     audio.addEventListener('error', handleError);
 
     return () => {
-      audio.removeEventListener('timeupdate', updateTime);
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('loadstart', handleLoadStart);
       audio.removeEventListener('canplay', handleCanPlay);
@@ -173,13 +194,17 @@ export const MusicPlayerProvider = ({ children }) => {
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       audio.removeEventListener('error', handleError);
     };
-  }, [state.repeat, state.currentIndex, state.playlist.length]);
+  }, [handleTimeUpdate, handleEnded, handleLoadStart, handleCanPlay, handleLoadedData, handleLoadedMetadata, handleError]);
 
-  // Handle getting stream URL when current song changes
+  // Load stream URL when current song changes - FIXED: Added dependency check
   useEffect(() => {
     const loadStreamUrl = async () => {
-      if (!state.currentSong || !state.currentSong._id) return;
+      if (!state.currentSong?._id || loadingRef.current || state.streamUrl) {
+        return; // Don't load if already loading or already have URL
+      }
 
+      loadingRef.current = true;
+      
       try {
         dispatch({ type: 'SET_LOADING', payload: true });
         
@@ -195,31 +220,36 @@ export const MusicPlayerProvider = ({ children }) => {
         console.error('Error getting stream URL:', error);
         message.error('Failed to load audio stream');
         dispatch({ type: 'SET_LOADING', payload: false });
+      } finally {
+        loadingRef.current = false;
       }
     };
 
     loadStreamUrl();
-  }, [state.currentSong?._id]);
+  }, [state.currentSong?._id]); // Only depend on song ID
 
-  // Handle audio source changes when stream URL is available
+  // Handle audio source changes when stream URL is available - FIXED: Better dependency management
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !state.streamUrl) return;
 
-    dispatch({ type: 'SET_LOADING', payload: true });
-    
-    // Set audio properties for better streaming
-    audio.crossOrigin = 'anonymous';
-    audio.preload = 'metadata';
-    
-    // Set the Cloudinary URL directly
-    audio.src = state.streamUrl;
-    
-    console.log('Loading audio from Cloudinary:', state.streamUrl);
+    // Only update if the source is different
+    if (audio.src !== state.streamUrl) {
+      dispatch({ type: 'SET_LOADING', payload: true });
+      
+      // Set audio properties for better streaming
+      audio.crossOrigin = 'anonymous';
+      audio.preload = 'metadata';
+      
+      // Set the Cloudinary URL directly
+      audio.src = state.streamUrl;
+      
+      console.log('Loading audio from Cloudinary:', state.streamUrl);
+    }
     
   }, [state.streamUrl]);
 
-  // Handle play/pause state changes
+  // Handle play/pause state changes - FIXED: Better state management
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !state.streamUrl) return;
@@ -247,7 +277,7 @@ export const MusicPlayerProvider = ({ children }) => {
         };
         audio.addEventListener('canplay', handleCanPlay);
         
-        // Cleanup listener if component unmounts
+        // Cleanup listener
         return () => audio.removeEventListener('canplay', handleCanPlay);
       }
     } else {
@@ -265,6 +295,9 @@ export const MusicPlayerProvider = ({ children }) => {
 
   const playSong = async (song, playlist = null, index = 0) => {
     try {
+      // Reset loading ref
+      loadingRef.current = false;
+      
       if (playlist) {
         dispatch({
           type: 'SET_PLAYLIST',
@@ -280,7 +313,7 @@ export const MusicPlayerProvider = ({ children }) => {
       // Don't auto-play immediately, let the audio load first
       setTimeout(() => {
         dispatch({ type: 'PLAY' });
-      }, 100);
+      }, 500); // Increased delay
       
     } catch (error) {
       console.error('Error playing song:', error);
@@ -296,14 +329,14 @@ export const MusicPlayerProvider = ({ children }) => {
   const nextSong = () => {
     if (state.playlist.length > 1) {
       dispatch({ type: 'NEXT_SONG' });
-      setTimeout(() => dispatch({ type: 'PLAY' }), 100);
+      setTimeout(() => dispatch({ type: 'PLAY' }), 500);
     }
   };
 
   const previousSong = () => {
     if (state.playlist.length > 1) {
       dispatch({ type: 'PREVIOUS_SONG' });
-      setTimeout(() => dispatch({ type: 'PLAY' }), 100);
+      setTimeout(() => dispatch({ type: 'PLAY' }), 500);
     }
   };
 
